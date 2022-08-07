@@ -48,10 +48,12 @@ pub fn run() {
             let change = amount - cost;
             println!("thanks for paying, you can take your product.");
             if change > 0. {
-                println!("and here's your change : {:.1$}", change, 2);
-                let list = changecoins(change);
-                println!("{:?}", list);
-                
+                println!("and here's your change : {:.1$}€", change, 2);
+                let list = coins_change(change);
+                for c in list {
+                    print!("{}x{}€ ", c.1, c.0);
+                }
+                println!();
             }
             break;
         } else {
@@ -60,7 +62,7 @@ pub fn run() {
     }
 }
 
-pub fn changecoins(number: f32) -> Vec<(f32, i32)> {
+pub fn coins_change(number: f32) -> Vec<(f32, i32)> {
     let coins: Vec<f32> = vec![2.00, 1.00, 0.50, 0.20, 0.10, 0.05, 0.02, 0.01];
     let mut list = vec![];
     let mut rest: f32 = number;

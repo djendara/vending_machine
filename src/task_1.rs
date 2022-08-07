@@ -1,5 +1,5 @@
-use std::num::ParseFloatError;
 use rand::Rng;
+use std::num::ParseFloatError;
 
 pub fn run() {
     // starting the machine
@@ -34,21 +34,24 @@ pub fn run() {
 
         // check if user input is valid
         // convert inpute to integer
-        let number: Result<f32, ParseFloatError> = line
-            .trim()
-            .parse::<f32>();
+        let number: Result<f32, ParseFloatError> = line.trim().parse::<f32>();
         let amount: f32 = match number {
             Ok(nb) => nb,
-            Err(_) => {println!("the amount should be a float number in this format 000.00."); continue;},
+            Err(_) => {
+                println!("the amount should be a float number in this format 000.00.");
+                continue;
+            }
         };
 
         // the amount should be a float number in this format 000.00.
         if amount <= 999.99 && (amount * 100.0).fract() == 0.0 && amount >= cost {
             let change = amount - cost;
             println!("thanks for paying, you can take your product.");
-            if change > 0. {println!("and here's your change : {:.1$}", change, 2);}
+            if change > 0. {
+                println!("and here's your change : {:.1$}€", change, 2);
+            }
             break;
-        }else {
+        } else {
             println!("the amount should be in this format 000.00.");
         }
     }

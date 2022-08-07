@@ -1,18 +1,28 @@
-use std::num::{ParseFloatError, ParseIntError};
+#![allow(dead_code, unused_imports)]
+
+use std::num::ParseIntError;
+
+static mut CASH_BOX: [u32; 8] = [20, 20, 20, 20, 20, 20, 20, 20];
+static COINS: [f32; 8] = [2.00, 1.00, 0.50, 0.20, 0.10, 0.05, 0.02, 0.01];
+static mut IT_WORKED: bool = true;
 
 pub fn run() {
     // starting the machine
     println!("~~ Welcom to our vending machine !! ~~");
-    let mut cash_box:Vec<u32> = vec![20; 8];
-    let coins: Vec<f32> = vec![2.00, 1.00, 0.50, 0.20, 0.10, 0.05, 0.02, 0.01];
 
-    // product selection
-    let cost = select();
-    // paying for the product
-    pay(cost, coins, cash_box);
+    loop {
+        // product selection
+        let cost = select();
+
+        // paying for the product
+        let payed = pay(cost);
+        if payed {
+            break;
+        }
+    }
 }
 
-pub fn pay(cost: f32, coins: Vec<f32>, cash_box: Vec<u32>) {
+pub fn pay(cost: f32) -> bool {
     // asking to pay for the product
     println!(
         "This product will cost you: {} €. Or you can press q to quit",
@@ -22,9 +32,9 @@ pub fn pay(cost: f32, coins: Vec<f32>, cash_box: Vec<u32>) {
     // user input
     println!("enter the count number that you have for each coin");
     let mut amount: f32 = 0.0;
-    let mut update_cash:Vec<u32> = vec![0; 8];
+    let mut user_cash: Vec<u32> = vec![0; 8];
     for i in 0..8 {
-        println!("how much of this coin do you have {}€", coins[i]);
+        println!("how much of this coin do you have {}€", COINS[i]);
         // read the count of this coin
         let mut count = String::new();
         std::io::stdin().read_line(&mut count).unwrap();
@@ -37,16 +47,17 @@ pub fn pay(cost: f32, coins: Vec<f32>, cash_box: Vec<u32>) {
             let mut conf = String::new();
             std::io::stdin().read_line(&mut conf).unwrap();
             if conf.trim().to_lowercase() == "y" {
-                break;
+                return true;
             }
         }
 
         // check if user input is valid ?
-        if (count.trim().parse::<u32>().unwrap() + cash_box[i]) <= 50 {
-            update_cash[i] = update_cash[i] + count.trim().parse::<u32>().unwrap();
-            amount = amount + coins[i] * count.trim().parse::<f32>().unwrap();
-        }else {
-            // true false
+        if (count.trim().parse::<u32>().unwrap() + unsafe { CASH_BOX[i] }) <= 50 {
+            user_cash[i] = user_cash[i] + count.trim().parse::<u32>().unwrap();
+            amount = amount + COINS[i] * count.trim().parse::<f32>().unwrap();
+        } else {
+            println!("no space left");
+            return false;
         }
     }
 
@@ -55,26 +66,53 @@ pub fn pay(cost: f32, coins: Vec<f32>, cash_box: Vec<u32>) {
         let change = amount - cost;
         // println!("thanks for paying, you can take your product.");
         if change > 0. {
-            println!("and here's your change : {:.1$}", change, 2);
-            let list = changecoins(change, coins, cash_box);
-            println!("{:?}", list);
+            println!("Thanks and here's your change : {:.1$}€", change, 2);
+            // let it_worked: bool = true;
+            let list = coins_change(change);
+            if unsafe { IT_WORKED } {
+                for i in 0..8 {
+                    unsafe {
+                        CASH_BOX[i] = CASH_BOX[i] + user_cash[i];
+                    }
+                }
+                for cash in &list {
+                    unsafe {
+                        let index_element = COINS.iter().position(|&x| x == cash.0).unwrap();
+                        CASH_BOX[index_element] = CASH_BOX[index_element] - cash.1;
+                    }
+                }
+                for c in list {
+                    print!("{}x{}€ ", c.1, c.0);
+                }
+                println!("");
+            } else {
+                println!("unabale to give change");
+                return false;
+            }
         }
-        // break;
     } else {
         println!("the amount should be in this format 000.00.");
+        return false;
     }
+    return true;
 }
 
 pub fn select() -> f32 {
     // presenting the menu
     let products = vec![
-        ("product 1", 5.99),
+        ("product 0", 5.99),
+        ("product 1", 6.69),
         ("product 2", 6.69),
-        ("product 2", 6.69),
-        ("product 2", 6.69),
+        ("product 3", 6.69),
+        ("product 4", 5.99),
+        ("product 5", 6.69),
+        ("product 6", 6.69),
+        ("product 7", 6.69),
+        ("product 8", 6.69),
+        ("product 9", 6.69),
     ];
     for prod in &products {
-        println!("{:?}", prod);
+        println!("{} : {}€", prod.0, prod.1);
     }
 
     // choosing a product
@@ -90,37 +128,48 @@ pub fn select() -> f32 {
             Err(_) => 200,
         };
         if nbr < 10 {
-            cost = products[(nbr as usize)-1].1;
+            cost = products[(nbr as usize)].1;
             break;
         } else {
-            println!("the amount should be an integer number for the product number")
+            println!("the number should be an integer from 0 to 9");
         }
     }
     return cost;
 }
 
-pub fn changecoins(number: f32, coins: Vec<f32>, cash_box: Vec<u32>) -> Vec<(f32, u32)> {
+pub fn coins_change(number: f32) -> Vec<(f32, u32)> {
     let mut list = vec![];
     let mut rest: f32 = number;
+
     for i in 0..8 {
-        let div: f32 = format!("{:.2}", rest / coins[i]).trim().parse().unwrap();
-        let mut int_part = div as u32;
-        if cash_box[i] == 0 || int_part == 0{
+        // the coin is empty in the cash box so we move to the nex one, mybe we can do the change with the rest
+        if unsafe { CASH_BOX[i] } == 0 {
             continue;
         }
-        if int_part > cash_box[i]{
-            int_part = cash_box[i];
+        let div: f32 = format!("{:.2}", rest / COINS[i]).trim().parse().unwrap();
+        let mut int_part = div as u32;
+        if int_part == 0 {
+            continue;
         }
-        
-        list.push((coins[i], int_part));
-        rest = rest - coins[i] * (int_part as f32);
-       
+        if int_part > unsafe { CASH_BOX[i] } {
+            int_part = unsafe { CASH_BOX[i] };
+        }
+
+        list.push((COINS[i], int_part));
+        rest = rest - COINS[i] * (int_part as f32);
+
+        // this means we can give user the change with no problem
         if rest == 0.0 {
             break;
-        } 
+        }
     }
 
-    // if rest != 0.0 {list=[].to_vec();}
-    
-    return  list;
+    // this means we can't give chnage with curent cash box, we need more coins
+    if rest != 0.0 {
+        unsafe {
+            IT_WORKED = false;
+        }
+    }
+
+    return list;
 }

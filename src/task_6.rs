@@ -1,14 +1,20 @@
 #![allow(dead_code, unused_imports)]
 
+use std::io::Read;
+use std::io::Write;
+
 use std::num::ParseIntError;
 
-static mut CASH_BOX: [u32; 8] = [20, 20, 20, 20, 20, 20, 20, 20];
+static mut CASH_BOX: [u32; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
 static COINS: [f32; 8] = [2.00, 1.00, 0.50, 0.20, 0.10, 0.05, 0.02, 0.01];
 static mut IT_WORKED: bool = true;
 
 pub fn run() {
     // starting the machine
     println!("~~ Welcom to our vending machine !! ~~");
+    // loading cash box from file
+    load_cash_box();
+    // update_cash_box();
 
     loop {
         println!("choose your option: 0_ show prosucts. 1_ service.");
@@ -28,6 +34,31 @@ pub fn run() {
         if payed {
             break;
         }
+    }
+}
+
+pub fn update_cash_box() {
+    let mut file = std::fs::File::create("CASH_BOX.txt").expect("create failed");
+    for cash in unsafe { CASH_BOX } {
+        let val = format!("{}\n", cash);
+        file.write_all(val.as_bytes()).expect("write failed");
+    }
+    println!("data written to file");
+}
+
+pub fn load_cash_box() {
+    let mut file = std::fs::File::open("CASH_BOX.txt").unwrap();
+    let mut contents = String::new();
+    file.read_to_string(&mut contents).unwrap();
+    let mut index = 0;
+    for lin in contents.split('\n') {
+        if lin == "" {
+            break;
+        }
+        unsafe {
+            CASH_BOX[index] = lin.trim().parse::<u32>().unwrap();
+        }
+        index = index + 1;
     }
 }
 
@@ -76,7 +107,6 @@ pub fn pay(cost: f32) -> bool {
         // println!("thanks for paying, you can take your product.");
         if change > 0. {
             println!("Thanks and here's your change : {:.1$}€", change, 2);
-
             let list = coins_change(change);
             if unsafe { IT_WORKED } {
                 for i in 0..8 {
@@ -94,6 +124,7 @@ pub fn pay(cost: f32) -> bool {
                     print!("{}x{}€ ", c.1, c.0);
                 }
                 println!("");
+                update_cash_box();
             } else {
                 println!("unabale to give change");
                 return false;
@@ -178,7 +209,7 @@ pub fn coins_change(number: f32) -> Vec<(f32, u32)> {
         unsafe {
             IT_WORKED = false;
         }
-    }
+    };
 
     return list;
 }
@@ -215,6 +246,7 @@ pub fn service() {
                         CASH_BOX[index as usize] =
                             CASH_BOX[index as usize] + input.trim().parse::<u32>().unwrap();
                     }
+                    update_cash_box();
                     println!("done.");
                 } else {
                     println!("not much space left...");
@@ -233,6 +265,7 @@ pub fn service() {
                         CASH_BOX[index as usize] =
                             CASH_BOX[index as usize] - input.trim().parse::<u32>().unwrap();
                     }
+                    update_cash_box();
                     println!("done.");
                 } else {
                     println!("you are requesting more coins then the box have");
